@@ -14,11 +14,11 @@ input_size = 28
 num_class = 10
 num_layers = 2
 seq_len = 28
-batch_size = 1
-num_units = 128
+batch_size = 200
+num_units = 512
 
 learn_rate = 0.001
-step = 1000
+step = 50000
 
 model = Model(input_size=input_size,
               num_class=num_class,
