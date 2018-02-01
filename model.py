@@ -13,29 +13,28 @@ class Model(object):
 
     def build(self):
         self.inputs = tf.placeholder(tf.float32, [None, None, self.input_size])
-        self.target = tf.placeholder(tf.int64, [None])
+        self.target = tf.sparse_placeholder(tf.int32, name='label')
         self.seq_len = tf.placeholder(tf.int32, [None])
         self.keep_prob = tf.placeholder(tf.float32)
+        self.lr = tf.placeholder(tf.float32)
 
         m_cell = tf.nn.rnn_cell.MultiRNNCell([self.unit() for _ in range(self.num_layers)])
-        # init_state = m_cell.zero_state(self.batch_size, dtype=tf.float32)
-        output, _ = tf.nn.dynamic_rnn(m_cell, self.inputs, self.seq_len, dtype=tf.float32)
-        h_state = output[:, -1, :]
+        output, _ = tf.nn.dynamic_rnn(m_cell, self.inputs, self.seq_len, dtype=tf.float32, time_major=False)
+        h_state = tf.reshape(output, (-1, self.num_units))
 
         w = tf.Variable(tf.truncated_normal([self.num_units, self.num_class], stddev=0.1))
         b = tf.constant(0.1, dtype=tf.float32, shape=[self.num_class])
 
         logits = tf.matmul(h_state, w) + b
-        # print(tf.shape(logits))
-        # print(tf.shape(self.target))
+        logits = tf.reshape(logits, [self.batch_size, -1, self.num_class])
+        self.logits = tf.transpose(logits, (1, 0, 2))
+        self.cost = tf.nn.ctc_loss(labels=self.target, inputs=logits, sequence_length=self.seq_len, time_major=False)
+        self.loss = tf.reduce_mean(self.cost)
 
-        # logits = tf.nn.relu(tf.matmul(h_state, w) + b)
-        # logits = tf.nn.softmax(logits)
-        self.loss = tf.reduce_mean(
-            tf.losses.sparse_softmax_cross_entropy(logits=logits, labels=self.target))
+        self.op = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.cost)
         
-        self.pre = tf.argmax(logits, 1)
-        self.acc = tf.reduce_mean(tf.cast(tf.equal(self.pre, self.target), tf.float32))
+        self.decoded, _ = tf.nn.ctc_beam_search_decoder(self.logits, self.seq_len, merge_repeated=False)
+        self.err = tf.reduce_mean(tf.edit_distance(tf.cast(self.decoded[0], tf.int32), self.target))
 
 
     def unit(self):
