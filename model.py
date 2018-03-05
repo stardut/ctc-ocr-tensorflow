@@ -2,7 +2,6 @@
 import tensorflow as tf
 
 class Model(object):
-    """docstring for Model"""
     def __init__(self, input_size, num_class, num_layers, batch_size, num_units):
         self.num_layers = num_layers
         self.num_units = num_units
@@ -18,6 +17,7 @@ class Model(object):
         self.keep_prob = tf.placeholder(tf.float32)
         self.lr = tf.placeholder(tf.float32)
 
+
         m_cell = tf.nn.rnn_cell.MultiRNNCell([self.unit() for _ in range(self.num_layers)])
         output, _ = tf.nn.dynamic_rnn(m_cell, self.inputs, self.seq_len, dtype=tf.float32, time_major=False)
         h_state = tf.reshape(output, (-1, self.num_units))
@@ -28,16 +28,18 @@ class Model(object):
         logits = tf.matmul(h_state, w) + b
         logits = tf.reshape(logits, [self.batch_size, -1, self.num_class])
         self.logits = tf.transpose(logits, (1, 0, 2))
-        self.cost = tf.nn.ctc_loss(labels=self.target, inputs=logits, sequence_length=self.seq_len, time_major=False)
+
+        self.decoded, _ = tf.nn.ctc_beam_search_decoder(self.logits, self.seq_len, merge_repeated=False)
+
+        self.cost = tf.nn.ctc_loss(labels=self.target, inputs=self.logits, sequence_length=self.seq_len)
         self.loss = tf.reduce_mean(self.cost)
 
-        self.op = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.cost)
+        self.op = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.cost)        
         
-        self.decoded, _ = tf.nn.ctc_beam_search_decoder(self.logits, self.seq_len, merge_repeated=False)
         self.err = tf.reduce_mean(tf.edit_distance(tf.cast(self.decoded[0], tf.int32), self.target))
 
 
     def unit(self):
-        rnn_cell =  tf.nn.rnn_cell.GRUCell(self.num_units)
+        rnn_cell = tf.nn.rnn_cell.LSTMCell(self.num_units)
         rnn_cell = tf.nn.rnn_cell.DropoutWrapper(rnn_cell, output_keep_prob=self.keep_prob)
         return rnn_cell

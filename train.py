@@ -8,6 +8,7 @@ from model import Model
 from data import Data
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 input_size = 28
 num_class = 10 + 1
@@ -40,7 +41,7 @@ with tf.Session() as sess:
             model.inputs : inputs,
             model.target : labels,
             model.seq_len : seq_lens,
-            model.keep_prob : 0.5, # dropout
+            model.keep_prob : 0.5,
             model.lr : learn_rate
         }
         sess.run(model.op, feed_dict=feed)

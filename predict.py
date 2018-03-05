@@ -7,18 +7,13 @@ from model import Model
 from data import Data
 import tensorflow as tf
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-# 每次输入的数据size
 input_size = 28
-# 分类, 10类数字 + blank
 num_class = 10 + 1
-# 网络层数
 num_layers = 2
-# 序列长度
 seq_len = 28
-# 每个batch的大小
 batch_size = 1
-# 隐层单元数量
 num_units = 256
 word_size = 8
 
@@ -54,7 +49,7 @@ data = Data()
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver(tf.global_variables())
-    saver.restore(sess, tf.train.latest_checkpoint(model_dir))
+    saver.restore(sess, 'model/model')
     feed = {
         model.inputs : inputs,
         model.seq_len : seq_lens,
@@ -64,7 +59,8 @@ with tf.Session() as sess:
     decode = sess.run(model.decoded, feed_dict=feed)
     pre = data.decode_sparse_tensor(decode[0])
     print('predict: ' + pre[0])
-
+    cv2.imshow('res', np.transpose(img))
+    cv2.waitKey(0)
 
 
 
